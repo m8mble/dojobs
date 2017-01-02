@@ -118,9 +118,7 @@ as empty lines are not supported.
 
     # Get and report results
     for i in range(num_jobs):
-        result = done_queue.get()
-        result['suppress_console'] = args.suppress_console  # TODO: In one line?
-        report(**result)
+        report(suppress_console=args.suppress_console, **done_queue.get())
 
     # Tell child processes to stop
     for i in range(num_processes):
