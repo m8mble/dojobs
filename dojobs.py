@@ -56,7 +56,7 @@ def report(job, job_id, return_code, host, wall_time, start_date, finish_date, c
     print(prefix, 'Job:        ', job)
     print(prefix, 'Return Code:', return_code)
     print(prefix, 'Host:       ', host)
-    print(prefix, 'Wall Time:  ', wall_time, '(From', start_date, 'until', finish_date, ')')  # TODO: No space before )
+    print(prefix, 'Wall Time:  ', wall_time, '(From {s} until {f})'.format(s=start_date, f=finish_date))
     if not suppress_console:
         print(prefix, 'Log: ', *console)
 
