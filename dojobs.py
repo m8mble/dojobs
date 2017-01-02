@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 import time, random  # TODO: Just for testing. Remove!
-from datetime import datetime
 import argparse
-from multiprocessing import Process, Queue, Lock, freeze_support
-import utils.execute
 import collections
+from datetime import datetime
+import queue
+import threading
+import utils.execute
 
 
 def _get_locked(lock, data, key):
@@ -95,13 +96,13 @@ as empty lines are not supported.
 
     setup_details = {
         'wait_secs': args.setup_pause,
-        'data_lock': Lock(),
-        'lock_data': collections.defaultdict(Lock)
+        'data_lock': threading.Lock(),
+        'lock_data': collections.defaultdict(threading.Lock)
     }
 
     # Create queues
-    task_queue = Queue()
-    done_queue = Queue()
+    task_queue = queue.Queue()
+    done_queue = queue.Queue()
 
     # Submit tasks
     for job_id, job in enumerate(args.jobfile):
@@ -113,7 +114,7 @@ as empty lines are not supported.
     # TODO: Can be encapsulated in a with WorkerContext class?
     for host, num in work_hosts:
         for i in range(num):
-            Process(target=worker, args=(host, setup_details, task_queue, done_queue)).start()
+            threading.Thread(target=worker, args=(host, setup_details, task_queue, done_queue)).start()
 
     # Get and report results
     for i in range(num_jobs):
@@ -127,5 +128,4 @@ as empty lines are not supported.
 # TODO: Documentation
 
 if __name__ == '__main__':
-    freeze_support()
     main()
