@@ -107,8 +107,7 @@ as empty lines are not supported.
     for job_id, job in enumerate(args.jobfile):
         job = job.strip()  # Remove trailing whitespace, in particular the potential '\n'.
         task_queue.put((job_id, job))
-        num_jobs = job_id + 1
-    # num_jobs = task_queue.size()  TODO: number of elements
+        num_jobs = job_id + 1  # Queue has no len, hence we have to keep track manually.
 
     # Setup workers
     # TODO: Can be encapsulated in a with WorkerContext class?
