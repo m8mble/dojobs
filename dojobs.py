@@ -3,19 +3,33 @@
 import time, random  # TODO: Just for testing. Remove!
 from datetime import datetime
 import argparse
-from multiprocessing import Process, Queue, freeze_support
+from multiprocessing import Process, Queue, Lock, freeze_support
 import utils.execute
+import collections
 
+
+def _get_locked(lock, data, key):
+    ''' Access data[key] while holding lock '''
+    with lock:  # lock while obtaining key-specific data
+        return data[key]
+
+
+def _wait_to_start(wait_secs, host, data_lock, lock_data):
+    ''' Wait some time to ensure host-jobs are not started more frequently than every wait_secs sec(s). '''
+    if not wait_secs:
+        return  # skip lock interactions entirely.
+    with _get_locked(data_lock, lock_data, host):
+        time.sleep(wait_secs)
 
 
 #
 # Function run by worker processes
 #
-def worker(host, in_queue, out_queue):
+def worker(host, setup_details, in_queue, out_queue):
     for job_id, job in iter(in_queue.get, 'STOP'):
+        # Wait some time to ensure host-jobs are not started too frequently.
+        _wait_to_start(host=host, **setup_details)
         start_date = datetime.now()
-
-        # TODO: Wait some time on a (host specific) start lock
 
         # Execute job
         return_code, console = utils.execute.execute(job)
@@ -54,6 +68,7 @@ def main():
         ('--jobfile', '-j'):
             {'type': argparse.FileType('r'), 'help': 'Path to file containing all jobs.', 'required': True},
         ('--suppress-console',): {'action': 'store_true', 'help': 'Suppress job output.'},
+        ('--setup-pause',): {'type': float, 'help': 'Time to wait before starting a job in sec.'},
         ('--list-arguments',): {'action': 'store_true', 'help': 'List allowed arguments (for auto-completion).'},
     }
     parser = argparse.ArgumentParser(
@@ -78,6 +93,12 @@ as empty lines are not supported.
     work_hosts = [('hans', 1), ('peter', 1)]
     num_processes = sum([x for (d, x) in work_hosts])
 
+    setup_details = {
+        'wait_secs': args.setup_pause,
+        'data_lock': Lock(),
+        'lock_data': collections.defaultdict(Lock)
+    }
+
     # Create queues
     task_queue = Queue()
     done_queue = Queue()
@@ -93,7 +114,7 @@ as empty lines are not supported.
     # TODO: Can be encapsulated in a with WorkerContext class?
     for host, num in work_hosts:
         for i in range(num):
-            Process(target=worker, args=(host, task_queue, done_queue)).start()
+            Process(target=worker, args=(host, setup_details, task_queue, done_queue)).start()
 
     # Get and report results
     for i in range(num_jobs):
