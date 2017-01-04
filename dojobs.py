@@ -59,12 +59,40 @@ def report(job, job_id, return_code, host, wall_time, start_date, finish_date, c
         print(prefix, 'Log: ', *console)
 
 
+class _StoreHostDetails(argparse.Action):
+    """ Helper to parse host specifications as pairs of host and num_threads. """
+
+    def __init__(self, option_strings, dest, **kwargs):
+        super(_StoreHostDetails, self).__init__(option_strings, dest, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        assert values, 'At least one argument is required.'
+        assert isinstance(values, list), 'Need input arguments as list.'
+        base_description = 'Specify with \'--host [USER@]HOST [NUM_THREADS]\''
+        if len(values) > 2:
+            parser.error('{d}; unsupported number of arguments!'.format(d=base_description))
+        elif len(values) == 2:
+            if not values[1].isdigit():
+                parser.error('{d}; NUM_THREADS specified as \'{t}\' but needs to be integer.'.format(
+                    d=base_description, t=values[1]))
+            values[1] = int(values[1])
+            if values[1] < 1:
+                parser.error('{d}; non-positive NUM_THREADS specified ({t}).'.format(d=base_description, t=values[1]))
+            values = tuple(values)
+        else:  # len(values) == 1
+            values = (values[0], 10)
+        getattr(namespace, self.dest).append(values)
+
+
 # Adapted using an official multiprocessing doc example (ie. the last one).
 def main():
     parser_config = {
         # TODO: Host specification
         ('--jobfile', '-j'):
             {'type': argparse.FileType('r'), 'help': 'Path to file containing all jobs.', 'required': True},
+        ('--host',):
+            {'metavar': 'H', 'action': _StoreHostDetails, 'nargs': '+', 'default': [],
+             'help': 'Add host H as worker for jobs.'},
         ('--suppress-console',): {'action': 'store_true', 'help': 'Suppress job output.'},
         ('--setup-pause',): {'type': float, 'help': 'Time to wait before starting a job in sec.'},
         ('--list-arguments',): {'action': 'store_true', 'help': 'List allowed arguments (for auto-completion).'},
@@ -72,7 +100,7 @@ def main():
     parser = argparse.ArgumentParser(
         description='Run jobs (remotely) in parallel.',
         formatter_class=argparse.RawTextHelpFormatter,
-        epilog = '''
+        epilog='''
 A job is a one-line bash-like command. The job will not be executed
 in a full shell, ie. with restricted features only. Output
 redirection will not work, while chaining with '&&' or ';' is
@@ -80,6 +108,12 @@ supported.
 
 A jobfile is a file containing one job in each line. Comments as well
 as empty lines are not supported.
+
+Hosts are specified as '[user@]host [num_threads]'. This adds
+'num_threads' workers on given 'host' to execute jobs in parallel.
+Both 'user' and 'num_threads' are optional. If 'num_threads' is given
+it must be integral and positive; otherwise its value defaults to the
+maximum number of cores available on 'host'.
 ''')
     for options, config in parser_config.items():
         parser.add_argument(*options, **config)
@@ -88,7 +122,7 @@ as empty lines are not supported.
 
     # TODO: Adjust specified numbers acc. to max number of free cores. Make adjusting default, add option to turn off.
     # TODO: Add special handling for localhost, ie. execute right here, right now.
-    work_hosts = [('hans', 1), ('peter', 1)]
+    work_hosts = args.host
     num_processes = sum([x for (d, x) in work_hosts])
 
     setup_details = {
