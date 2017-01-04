@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-import time, random  # TODO: Just for testing. Remove!
 import argparse
 import collections
 from datetime import datetime
 import queue
 import threading
+import time
 import utils.execute
 
 
@@ -34,9 +34,6 @@ def worker(host, setup_details, in_queue, out_queue):
 
         # Execute job
         return_code, console = utils.execute.execute(job)
-
-        # TODO: Remove: Wait some random short duration
-        time.sleep(0.5*random.random())
 
         # Write result to out_queue
         finish_date = datetime.now()
