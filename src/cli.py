@@ -6,7 +6,7 @@ from datetime import datetime
 import queue
 import threading
 import time
-import utils.execute
+from . import execute
 
 
 def _get_locked(lock, data, key):
