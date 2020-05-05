@@ -158,5 +158,3 @@ maximum number of cores available on 'host'.
 # TODO: How does STOP work? How does iter work?
 # TODO: Documentation
 
-if __name__ == '__main__':
-    main()
